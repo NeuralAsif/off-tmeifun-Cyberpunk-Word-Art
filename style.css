@@ -1,0 +1,263 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: dark;
+  --green: #00ff9d;
+  --cyan: #00cfff;
+  --background: #030605;
+  --panel: #07110f;
+  --muted: #8eb9ac;
+  --border: #124d3a;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 22px 14px 34px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(0, 255, 157, 0.08), transparent 48%),
+    var(--background);
+  color: #d9fff0;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.page-shell {
+  width: min(100%, 1040px);
+  margin: 0 auto;
+}
+
+.site-header {
+  text-align: center;
+  padding: 18px 8px 12px;
+}
+
+.eyebrow {
+  color: var(--cyan);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  line-height: 1.7;
+}
+
+h1 {
+  margin: 10px 0;
+  color: var(--green);
+  font-size: clamp(25px, 5vw, 44px);
+  letter-spacing: 0.035em;
+  line-height: 1.15;
+  text-shadow: 0 0 22px rgba(0, 255, 157, 0.18);
+}
+
+h1 span {
+  color: #d9fff0;
+}
+
+.intro {
+  max-width: 650px;
+  margin: 0 auto;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.panel {
+  margin: 18px auto 0;
+  padding: clamp(14px, 3vw, 24px);
+  background: linear-gradient(145deg, rgba(7, 17, 15, 0.98), rgba(3, 9, 7, 0.98));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 0 34px rgba(0, 255, 157, 0.07);
+}
+
+.section-heading {
+  margin: 0 0 20px;
+  color: #baffdc;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.field {
+  margin: 16px 0;
+}
+
+label {
+  display: block;
+  margin: 0 0 7px;
+  color: #baffdc;
+  font-size: 13px;
+}
+
+input[type="text"],
+input[type="file"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #146c50;
+  border-radius: 7px;
+  background: #020706;
+  color: #baffdc;
+  font: inherit;
+  font-size: 13px;
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}
+
+#preview {
+  display: none;
+  max-width: min(100%, 260px);
+  max-height: 260px;
+  margin: 12px auto;
+  border: 1px solid var(--green);
+  border-radius: 5px;
+  object-fit: contain;
+}
+
+.help,
+.footnote {
+  color: #7ca295;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 12px;
+}
+
+button {
+  flex: 1 1 190px;
+  min-height: 43px;
+  padding: 11px 14px;
+  border: 1px solid var(--green);
+  border-radius: 7px;
+  background: #05271c;
+  color: var(--green);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease, border-color 160ms ease;
+}
+
+button:hover:not(:disabled) {
+  background: #06442e;
+  transform: translateY(-1px);
+}
+
+button.secondary {
+  border-color: #187c78;
+  background: #041715;
+  color: #8cf9ed;
+}
+
+button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.status {
+  min-height: 22px;
+  margin: 15px 0 8px;
+  color: var(--green);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.timeline {
+  height: 4px;
+  margin: 8px 0 6px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: #10251a;
+}
+
+#progress {
+  width: 0;
+  height: 100%;
+  background: var(--green);
+  box-shadow: 0 0 12px var(--green);
+  transition: width 50ms linear;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #7ca295;
+  font-size: 10px;
+}
+
+.stage {
+  display: none;
+  width: min(100%, 520px);
+  margin: 20px auto 0;
+  overflow: hidden;
+  aspect-ratio: 9 / 16;
+  border: 1px solid #17573e;
+  background: #000;
+  box-shadow: 0 0 34px rgba(0, 255, 157, 0.08);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.footnote {
+  margin: 16px 0 0;
+}
+
+footer {
+  padding: 24px 8px 0;
+  color: #4d796b;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+footer span {
+  color: var(--green);
+}
+
+@media (max-width: 520px) {
+  body {
+    padding: 10px 8px 24px;
+  }
+
+  .panel {
+    padding: 13px;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .meta {
+    font-size: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

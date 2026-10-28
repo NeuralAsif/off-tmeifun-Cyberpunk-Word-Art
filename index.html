@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#030605">
+  <meta name="description" content="Create a cyberpunk word-art portrait animation from your photo and custom text.">
+  <title>Cyberpunk Identity Reconstruction</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="site-header">
+      <p class="eyebrow">WORD-ART IDENTITY // COLOR-ACCENT TEXT PORTRAIT VIDEO</p>
+      <h1>IDENTITY <span>RECONSTRUCTION</span></h1>
+      <p class="intro">Turn a portrait into a living matrix of readable words, neon color, and cinematic scan effects.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="controls-title">
+      <h2 id="controls-title" class="section-heading">Initialize your portrait</h2>
+
+      <div class="field">
+        <label for="photo">01 / Select your portrait</label>
+        <input id="photo" type="file" accept="image/*">
+      </div>
+      <img id="preview" alt="Preview of selected portrait">
+
+      <div class="field">
+        <label for="word">02 / Enter your text or name</label>
+        <input id="word" type="text" placeholder="Enter a name, phrase, or message" autocomplete="off" maxlength="180">
+        <p class="help">Your text repeats across the portrait. Brightness controls text size and color to create the image.</p>
+      </div>
+
+      <div class="actions">
+        <button id="generate" type="button">Initialize reconstruction</button>
+        <button id="replay" type="button" class="secondary" disabled>Replay animation</button>
+        <button id="export" type="button" class="secondary" disabled>Export 20-second video</button>
+        <button id="save" type="button" class="secondary" disabled>Export PNG</button>
+      </div>
+
+      <p id="status" class="status" role="status" aria-live="polite">SYSTEM STANDBY — WAITING FOR INPUT</p>
+      <div class="timeline" aria-hidden="true"><div id="progress"></div></div>
+      <div class="meta">
+        <span>VERTICAL 9:16</span>
+        <span id="time">00:00 / 00:20</span>
+        <span>FULL COLOR</span>
+      </div>
+
+      <div id="stage" class="stage">
+        <canvas id="canvas" width="720" height="1280" aria-label="Animated word-art portrait"></canvas>
+      </div>
+      <p class="footnote">Video exports as WebM. Use a recent Chrome or Edge browser and keep this tab open while recording. Your photo is processed locally in your browser.</p>
+    </section>
+    <footer>CYBERPUNK IDENTITY LAB <span>•</span> CLIENT-SIDE CREATIVE TOOL</footer>
+  </main>
+</body>
+</html>
