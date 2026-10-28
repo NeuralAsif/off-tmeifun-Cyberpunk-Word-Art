@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyberpunk Identity Reconstruction</title>
+<style>
+*{box-sizing:border-box}
+:root{--green:#00ff9d;--cyan:#00cfff;--bg:#030605;--panel:#07110f}
+body{margin:0;background:var(--bg);color:#d9fff0;font-family:Consolas,monospace;text-align:center;min-height:100vh;padding:14px 12px}
+h1{color:var(--green);font-size:clamp(22px,4vw,34px);margin:8px 0}
+p{color:#8eb9ac}
+.panel{max-width:1240px;margin:12px auto;padding:18px;background:var(--panel);border:1px solid #124d3a;border-radius:12px;box-shadow:0 0 30px #00ff9d12}
+label{display:block;text-align:left;color:#baffdc;margin:7px 0 4px}
+input[type=text],input[type=file]{width:100%;margin:5px 0;padding:10px;background:#020706;color:#baffdc;border:1px solid #146c50;border-radius:7px;font:inherit}
+button{padding:11px 16px;margin:6px 3px;border:1px solid var(--green);background:#05271c;color:var(--green);border-radius:7px;font-weight:bold;font-family:inherit;cursor:pointer}
+button:hover{background:#06442e}
+button:disabled{opacity:.45;cursor:not-allowed}
+#preview{max-width:100%;max-height:220px;display:none;margin:12px auto;border:1px solid var(--green)}
+#stage{width:min(100%,680px);margin:16px auto 0;background:#000;border:1px solid #17573e;overflow:hidden;aspect-ratio:9/16;display:none;position:relative;box-shadow:0 0 34px #00ff9d18}
+canvas{width:100%;height:100%;display:block}
+#status{color:var(--green);min-height:22px;font-size:13px}
+small{color:#7ca295}
+.note{font-size:12px;line-height:1.5;text-align:left}
+.timeline{height:4px;background:#10251a;margin:10px 0 4px;border-radius:5px;overflow:hidden}
+#progress{height:100%;width:0;background:var(--green)}
+.meta{display:flex;justify-content:space-between;color:#7ca295;font-size:11px;gap:10px}
+@media(max-width:520px){body{padding:12px 8px}.panel{padding:12px}button{width:100%;margin:4px 0}}
+</style>
+</head>
+<body>
+<h1>IDENTITY RECONSTRUCTION</h1>
+<p>WORD-ART IDENTITY // COLOR-ACCENT TEXT PORTRAIT VIDEO</p>
+
+<div class="panel">
+  <label for="photo">01 / Select your portrait</label>
+  <input id="photo" type="file" accept="image/*">
+  <img id="preview" alt="Selected photo preview">
+
+  <label for="word">02 / Enter your text or name</label>
+  <input id="word" type="text" placeholder="Enter any name, phrase, or message" autocomplete="off">
+  <p class="note">Your text forms the portrait as readable words, with varied fonts, teal/cyan accents, a cinematic scan beam, and a final color sweep.</p>
+
+  <button id="generate">INITIALIZE RECONSTRUCTION</button>
+  <button id="replay" disabled>REPLAY VIDEO</button>
+  <button id="export" disabled>EXPORT 20-SECOND VIDEO</button>
+  <button id="save" disabled>EXPORT PNG</button>
+  <p id="status">SYSTEM STANDBY — WAITING FOR INPUT</p>
+  <div class="timeline"><div id="progress"></div></div>
+  <div class="meta"><span>VERTICAL 9:16 · LARGE PREVIEW</span><span id="time">00:00 / 00:20</span><span>FULL COLOR</span></div>
+
+  <div id="stage">
+    <canvas id="canvas" width="720" height="1280"></canvas>
+  </div>
+  <p class="note">Video export downloads a WebM file. Use Chrome or Edge and keep this tab open until recording finishes.</p>
+  <small>Your photo is processed locally in this browser.</small>
+</div>
+
+<script>
+'use strict';
+
+const fileInput = document.getElementById('photo');
+const wordInput = document.getElementById('word');
+const preview = document.getElementById('preview');
+const statusText = document.getElementById('status');
+const stage = document.getElementById('stage');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+const progress = document.getElementById('progress');
+const timeLabel = document.getElementById('time');
+const generateBtn = document.getElementById('generate');
+const replayBtn = document.getElementById('replay');
+const exportBtn = document.getElementById('export');
+const saveBtn = document.getElementById('save');
+
+const W = canvas.width, H = canvas.height;
+const DURATION = 20;
+const CELL = 8; // Balanced word-art spacing for the larger portrait preview.
+const GLYPHS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*+-<>';
+
+let photo = new Image();
+let photoReady = false;
+let photoURL = null;
+let portrait = null;
+let rain = [];
+let animationId = null;
+let startTime = 0;
+let finalFrameReady = false;
+let isExporting = false;
+let recorder = null;
+let recordStream = null;
+let chunks = [];
+let exportTimer = null;
+let lastPaint = 0;
+let lastElapsed = 0;
+let lastPhase = '';
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    statusText.textContent = 'ERROR: SELECT AN IMAGE FILE';
+    return;
+  }
+  if (photoURL) URL.revokeObjectURL(photoURL);
+  photoURL = URL.createObjectURL(file);
+  const next = new Image();
+  next.onload = () => {
+    photo = next;
+    photoReady = true;
+    preview.src = photoURL;
+    preview.style.display = 'block';
+    statusText.textContent = 'PHOTO LOADED — READY FOR RECONSTRUCTION';
+    resetButtons();
+  };
+  next.onerror = () => {
+    photoReady = false;
+    statusText.textContent = 'ERROR: COULD NOT READ IMAGE';
+  };
+  next.src = photoURL;
+});
+
+function makePortraitPixels() {
+  const off = document.createElement('canvas');
+  off.width = W;
+  off.height = H;
+  const c = off.getContext('2d', { willReadFrequently: true });
+  // Crop to fill the portrait frame, like the reference clip.
+  const scale = Math.max(W / photo.width, H / photo.height);
+  const dw = photo.width * scale, dh = photo.height * scale;
+  c.fillStyle = '#000';
+  c.fillRect(0, 0, W, H);
+  c.drawImage(photo, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  return c.getImageData(0, 0, W, H).data;
+}
+
+function initRain() {
+  const count = Math.ceil(W / 13);
+  rain = Array.from({length: count}, () => ({
+    x: Math.random() * W,
+    y: Math.random() * H,
+    speed: 0.7 + Math.random() * 2.7,
+    alpha: 0.12 + Math.random() * 0.45,
+    glyph: Math.random() < 0.5 ? '01' : 'アイ'
+  }));
+}
+
+function drawRain(elapsed, revealedY) {
+  ctx.save();
+  ctx.font = '10px Consolas, monospace';
+  for (const r of rain) {
+    r.y += r.speed * (0.75 + elapsed * 0.035);
+    if (r.y > H + 18) {
+      r.y = -10 - Math.random() * 70;
+      r.x = Math.random() * W;
+      r.speed = 0.7 + Math.random() * 2.7;
+    }
+    // Keep the falling streams visible below the moving portrait edge.
+    if (r.y > revealedY - 4) {
+      ctx.fillStyle = `rgba(210,220,215,${r.alpha * 0.75})`;
+      ctx.fillText(r.glyph, r.x, r.y);
+    }
+  }
+  ctx.restore();
+}
+
+function getPattern() {
+  // No maxlength: every character supplied by the user participates in the repeating texture.
+  const input = Array.from(wordInput.value || 'IDENTITY');
+  return input.map(ch => /\s/.test(ch) ? '·' : ch);
+}
+
+function drawPortraitRows(elapsed, revealY) {
+  if (!portrait) return;
+
+  // Use all of the text entered by the user. A single name repeats; phrases
+  // cycle through their full word sequence to create the word-art texture.
+  const rawText = (wordInput.value || 'IDENTITY').trim();
+  const words = rawText.split(/\s+/).filter(Boolean);
+  const wordList = words.length ? words : ['IDENTITY'];
+  const rowStep = 11;
+  const rows = Math.ceil(Math.min(H, revealY) / rowStep);
+  const revealProgress = Math.max(0, Math.min(1, (elapsed - 0.8) / 6.4));
+  const fontFamilies = [
+    'Georgia, serif',
+    'Consolas, "Courier New", monospace',
+    'Arial, Helvetica, sans-serif',
+    '"Trebuchet MS", sans-serif'
+  ];
+
+  ctx.save();
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.shadowBlur = 0;
+
+  let wordIndex = 0;
+  for (let gy = 0; gy < rows; gy++) {
+    const y = gy * rowStep + rowStep / 2;
+    let x = (gy % 2 === 1) ? -15 : 3;
+
+    while (x < W) {
+      const sampleX = Math.max(0, Math.min(W - 1, Math.floor(x + 4)));
+      const sampleY = Math.max(0, Math.min(H - 1, Math.floor(y)));
+      const p = (sampleY * W + sampleX) * 4;
+      const r = portrait[p], g = portrait[p + 1], b = portrait[p + 2];
+      const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      const saturation = (Math.max(r, g, b) - Math.min(r, g, b)) / 255;
+
+      // Vary font size, weight and family according to light and shadow areas.
+      // This gives facial contours more detail without making the text a pixel mosaic.
+      let size;
+      if (lum > 0.79) size = 9.6;
+      else if (lum > 0.61) size = 8.7;
+      else if (lum > 0.42) size = 7.8;
+      else if (lum > 0.23) size = 6.8;
+      else size = 5.9;
+
+      const family = fontFamilies[(gy + Math.floor(x / 90) + (lum > 0.55 ? 1 : 0)) % fontFamilies.length];
+      const bold = lum > 0.64 || (gy % 7 === 0 && lum > 0.38);
+      ctx.font = `${bold ? 'bold ' : ''}${size}px ${family}`;
+
+      const word = wordList[wordIndex % wordList.length];
+      wordIndex++;
+
+      // Restrained cyberpunk palette: teal shadows, green/cyan midtones,
+      // cool blue highlights, and a little warm ivory for the brightest areas.
+      let base;
+      if (lum < 0.15) base = [0, 104, 100];          // deep teal
+      else if (lum < 0.31) base = [0, 174, 126];     // emerald
+      else if (lum < 0.49) base = [20, 218, 184];    // turquoise
+      else if (lum < 0.67) base = [86, 190, 255];    // sky blue
+      else if (lum < 0.82) base = [181, 214, 255];   // pale blue
+      else base = [255, 246, 225];                   // warm ivory
+
+      // Preserve a small amount of source-photo hue for natural skin/hair variation.
+      const tint = Math.min(0.30, saturation * 0.30);
+      const rr = Math.round(base[0] * (1 - tint) + r * tint);
+      const gg = Math.round(base[1] * (1 - tint) + g * tint);
+      const bb = Math.round(base[2] * (1 - tint) + b * tint);
+
+      const shimmer = 0.95 + 0.05 * Math.sin(elapsed * 1.8 + (x / 11) * 0.13 + gy * 0.17);
+      const alpha = Math.min(1, (0.32 + lum * 0.68) * shimmer * (0.35 + revealProgress * 0.65));
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = `rgb(${rr},${gg},${bb})`;
+
+      // Very subtle colored glow only on bright glyphs so the words remain legible.
+      ctx.shadowColor = `rgba(${rr},${gg},${bb},0.55)`;
+      ctx.shadowBlur = lum > 0.72 ? 1.4 : 0;
+      ctx.fillText(word, x, y);
+
+      const measured = ctx.measureText(word).width;
+      x += Math.max(5, measured + (lum > 0.55 ? 1.4 : 0.7));
+    }
+  }
+  ctx.restore();
+}
+function drawCinematicEffects(elapsed, revealY) {
+  // Floating energy particles and streaks, visible throughout the sequence.
+  ctx.save();
+  for (let i = 0; i < 46; i++) {
+    const x = (i * 79 + elapsed * (20 + (i % 4) * 8)) % W;
+    const y = (i * 137 + elapsed * (29 + (i % 3) * 12)) % H;
+    const alpha = 0.08 + 0.17 * (0.5 + 0.5 * Math.sin(elapsed * 2.1 + i));
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = i % 4 === 0 ? '#80f7ff' : (i % 3 === 0 ? '#00ff9d' : '#b6ffe0');
+    ctx.fillRect(x, y, i % 4 === 0 ? 3 : 1, i % 4 === 0 ? 3 : 7);
+  }
+  ctx.restore();
+
+  // Boot-up target: expanding rings, crosshairs, and a pulsing center.
+  if (elapsed < 3.2) {
+    const cx = W / 2, cy = H * 0.43;
+    const pulse = 0.72 + 0.28 * Math.sin(elapsed * 7.5);
+    const radius = 22 + elapsed * 28;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 0.78 * (1 - elapsed / 3.2)) * pulse;
+    ctx.strokeStyle = '#65ffe0';
+    ctx.lineWidth = 1.4;
+    ctx.shadowColor = '#00eaff';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.62, elapsed * 1.8, elapsed * 1.8 + Math.PI * 1.5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - radius - 16, cy); ctx.lineTo(cx - radius + 4, cy);
+    ctx.moveTo(cx + radius - 4, cy); ctx.lineTo(cx + radius + 16, cy);
+    ctx.moveTo(cx, cy - radius - 16); ctx.lineTo(cx, cy - radius + 4);
+    ctx.moveTo(cx, cy + radius - 4); ctx.lineTo(cx, cy + radius + 16);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // After the portrait has formed, sweep a luminous color beam across it.
+  if (elapsed >= 15.2 && elapsed < 18.8) {
+    const sweepP = (elapsed - 15.2) / 3.6;
+    const beamX = -80 + sweepP * (W + 160);
+    const grad = ctx.createLinearGradient(beamX - 70, 0, beamX + 70, 0);
+    grad.addColorStop(0, 'rgba(0,255,157,0)');
+    grad.addColorStop(0.38, 'rgba(0,255,157,.025)');
+    grad.addColorStop(0.5, 'rgba(150,255,235,.24)');
+    grad.addColorStop(0.62, 'rgba(0,210,255,.08)');
+    grad.addColorStop(1, 'rgba(0,255,157,0)');
+    ctx.save();
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  // Short, controlled digital glitch during the final reveal.
+  if (elapsed > 17.1 && elapsed < 18.0) {
+    ctx.save();
+    ctx.globalAlpha = 0.2 * (0.5 + 0.5 * Math.sin(elapsed * 53));
+    ctx.fillStyle = '#50f6ff';
+    const offset = Math.sin(elapsed * 45) * 9;
+    ctx.fillRect(0, H * 0.27 + offset, W, 3);
+    ctx.fillStyle = '#00ff9d';
+    ctx.fillRect(0, H * 0.70 - offset, W, 2);
+    ctx.restore();
+  }
+
+  // Corner frame brightens during the final portrait hold.
+  if (elapsed > 15.2) {
+    const alpha = Math.min(1, (elapsed - 15.2) / 0.7);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = 'rgba(92,255,205,.82)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00ff9d';
+    ctx.shadowBlur = 8;
+    const m = 24, l = 24;
+    ctx.beginPath();
+    ctx.moveTo(m, m + l); ctx.lineTo(m, m); ctx.lineTo(m + l, m);
+    ctx.moveTo(W - m - l, m); ctx.lineTo(W - m, m); ctx.lineTo(W - m, m + l);
+    ctx.moveTo(m, H - m - l); ctx.lineTo(m, H - m); ctx.lineTo(m + l, H - m);
+    ctx.moveTo(W - m - l, H - m); ctx.lineTo(W - m, H - m); ctx.lineTo(W - m, H - m - l);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+function drawFrame(elapsed) {
+  ctx.fillStyle = '#010302';
+  ctx.fillRect(0, 0, W, H);
+
+  // Phase 1: boot. Phase 2: word-art reveal. Phase 3: color sweep and final hold.
+  const revealStart = 3.2;
+  const revealEnd = 15.2;
+  const p = Math.max(0, Math.min(1, (elapsed - revealStart) / (revealEnd - revealStart)));
+  const revealY = p * H;
+
+  drawRain(elapsed, revealY);
+
+  if (revealY > 0) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, revealY);
+    ctx.clip();
+    drawPortraitRows(elapsed, revealY);
+    // Subtle moving code passes over the words without hiding their readability.
+    ctx.globalAlpha = 0.018;
+    ctx.fillStyle = '#d8fff0';
+    ctx.font = '7px Consolas, monospace';
+    for (let y = 0; y < revealY; y += 21) {
+      const offset = Math.floor((elapsed * 22 + y) % 23);
+      ctx.fillText('01  アイ  10  ' + (wordInput.value || 'IDENTITY'), offset, y);
+    }
+    ctx.restore();
+  }
+
+  // Bright scan beam follows the reconstruction edge while words form.
+  if (elapsed > revealStart && elapsed < revealEnd) {
+    const lineY = revealY;
+    const grad = ctx.createLinearGradient(0, lineY - 28, 0, lineY + 28);
+    grad.addColorStop(0, 'rgba(0,255,157,0)');
+    grad.addColorStop(0.34, 'rgba(0,255,157,.12)');
+    grad.addColorStop(0.5, 'rgba(190,255,238,.98)');
+    grad.addColorStop(0.66, 'rgba(0,255,157,.22)');
+    grad.addColorStop(1, 'rgba(0,255,157,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, lineY - 28, W, 56);
+    ctx.save();
+    ctx.shadowColor = '#00ff9d';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = 'rgba(185,255,232,.9)';
+    ctx.fillRect(0, lineY - 1, W, 2);
+    ctx.restore();
+  }
+
+  // Startup overlay: animated target and status typography.
+  if (elapsed < revealStart) {
+    const pulse = 0.65 + 0.35 * Math.sin(elapsed * 5);
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(120,255,200,${0.75 + pulse * 0.2})`;
+    ctx.font = 'bold 15px Consolas, monospace';
+    ctx.fillText('NEURAL IDENTITY SYSTEM', W / 2, H * 0.57);
+    ctx.font = '10px Consolas, monospace';
+    ctx.fillStyle = '#65dff0';
+    ctx.fillText(elapsed < 1.4 ? 'INITIALIZING SCAN FIELD...' : 'ANALYZING IMAGE STRUCTURE...', W / 2, H * 0.57 + 24);
+    ctx.fillStyle = 'rgba(0,255,157,.18)';
+    ctx.fillRect(W * 0.2, H * 0.57 + 38, W * 0.6, 3);
+    ctx.fillStyle = '#00ff9d';
+    ctx.fillRect(W * 0.2, H * 0.57 + 38, W * 0.6 * Math.min(1, elapsed / revealStart), 3);
+    ctx.restore();
+  }
+
+  // Floating particles, reticle and cinematic effects overlay the image.
+  drawCinematicEffects(elapsed, revealY);
+
+  // Minimal HUD frame.
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,255,157,.48)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(9, 9, W - 18, H - 18);
+  ctx.fillStyle = '#78ffc0';
+  ctx.font = '9px Consolas, monospace';
+  ctx.fillText('IDENTITY RECONSTRUCTION // LIVE', 17, 24);
+  ctx.fillStyle = 'rgba(0,255,157,.82)';
+  ctx.fillText('WORD MATRIX // COLOR DETAIL', 17, H - 16);
+  ctx.restore();
+
+  // Hold the completed portrait for the final seconds so the audience can see it.
+  if (elapsed >= revealEnd) {
+    const pulse = 0.5 + 0.5 * Math.sin(elapsed * 3.2);
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.46)';
+    ctx.fillRect(12, H - 56, W - 24, 36);
+    ctx.fillStyle = `rgba(170,255,208,${0.8 + pulse * 0.2})`;
+    ctx.font = 'bold 11px Consolas, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('IDENTITY RECONSTRUCTED // SIGNAL LOCKED', W / 2, H - 33);
+    ctx.restore();
+  }
+}
+function render(now) {
+  if (!startTime) return;
+  try {
+    const elapsed = Math.min(DURATION, (now - startTime) / 1000);
+    lastElapsed = elapsed;
+
+    if (now - lastPaint >= 32 || elapsed >= DURATION) {
+      drawFrame(elapsed);
+      lastPaint = now;
+      progress.style.width = `${Math.min(100, elapsed / DURATION * 100)}%`;
+      timeLabel.textContent = `00:${String(Math.floor(elapsed)).padStart(2,'0')} / 00:20`;
+
+      let phase;
+      if (elapsed < 2.5) phase = 'SYSTEM STARTUP — CALIBRATING SCAN FIELD';
+      else if (elapsed < 3.2) phase = 'IMAGE ANALYSIS — LOCKING SOURCE DETAILS';
+      else if (elapsed < 15.2) phase = 'RECONSTRUCTING PORTRAIT FROM READABLE WORDS';
+      else if (elapsed < 18.8) phase = 'FINAL COLOR SWEEP — ENHANCING DETAILS';
+      else phase = 'FINAL IDENTITY REVEAL — HOLDING COMPLETED PORTRAIT';
+
+      if (!isExporting && phase !== lastPhase) {
+        statusText.textContent = phase;
+        lastPhase = phase;
+      }
+    }
+
+    if (elapsed < DURATION) {
+      animationId = requestAnimationFrame(render);
+    } else {
+      animationId = null;
+      finalFrameReady = true;
+      saveBtn.disabled = false;
+      if (!isExporting) {
+        statusText.textContent = 'WORD-ART PORTRAIT COMPLETE — READY TO EXPORT';
+        generateBtn.disabled = false;
+        replayBtn.disabled = false;
+      }
+    }
+  } catch (error) {
+    if (animationId) cancelAnimationFrame(animationId);
+    animationId = null;
+    generateBtn.disabled = false;
+    replayBtn.disabled = false;
+    exportBtn.disabled = false;
+    statusText.textContent = 'RENDER ERROR: ' + (error && error.message ? error.message : 'Unknown rendering issue');
+    console.error('Portrait rendering failed:', error);
+  }
+}
+function resetButtons() {
+  if (!isExporting) {
+    generateBtn.disabled = false;
+    replayBtn.disabled = !photoReady;
+    exportBtn.disabled = !photoReady;
+  }
+}
+
+function startAnimation() {
+  if (!photoReady) {
+    statusText.textContent = 'PLEASE SELECT A PHOTO FIRST';
+    fileInput.focus();
+    return false;
+  }
+  if (!wordInput.value.trim()) {
+    statusText.textContent = 'PLEASE ENTER YOUR TEXT OR NAME';
+    wordInput.focus();
+    return false;
+  }
+  if (animationId) cancelAnimationFrame(animationId);
+
+  try {
+    portrait = makePortraitPixels();
+  } catch (error) {
+    statusText.textContent = 'PHOTO PROCESSING ERROR — TRY ANOTHER IMAGE';
+    console.error(error);
+    return false;
+  }
+  initRain();
+  stage.style.display = 'block';
+  finalFrameReady = false;
+  saveBtn.disabled = true;
+  replayBtn.disabled = false;
+  exportBtn.disabled = false;
+  progress.style.width = '0%';
+  startTime = performance.now();
+  lastPaint = 0;
+  lastPhase = '';
+  statusText.textContent = 'SYSTEM STARTUP — CALIBRATING SCAN FIELD';
+  animationId = requestAnimationFrame(render);
+  return true;
+}
+
+generateBtn.addEventListener('click', () => {
+  if (!isExporting) startAnimation();
+});
+replayBtn.addEventListener('click', () => {
+  if (!isExporting) startAnimation();
+});
+
+exportBtn.addEventListener('click', () => {
+  if (isExporting) return;
+  if (!photoReady) {
+    statusText.textContent = 'PLEASE SELECT A PHOTO FIRST';
+    return;
+  }
+  if (!wordInput.value.trim()) {
+    statusText.textContent = 'PLEASE ENTER YOUR TEXT OR NAME';
+    return;
+  }
+  if (!('MediaRecorder' in window) || !canvas.captureStream) {
+    statusText.textContent = 'VIDEO EXPORT NEEDS A RECENT CHROME OR EDGE BROWSER';
+    return;
+  }
+
+  // Ensure the stage and portrait data are ready before recording the canvas.
+  if (!portrait || stage.style.display === 'none') {
+    const ok = startAnimation();
+    if (!ok) return;
+  } else {
+    if (animationId) cancelAnimationFrame(animationId);
+    if (startTime) startTime = 0;
+    const ok = startAnimation();
+    if (!ok) return;
+  }
+
+  isExporting = true;
+  generateBtn.disabled = true;
+  replayBtn.disabled = true;
+  exportBtn.disabled = true;
+  saveBtn.disabled = true;
+  statusText.textContent = 'RECORDING 20-SECOND VIDEO — KEEP THIS TAB OPEN';
+
+  const mimeCandidates = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  const mimeType = mimeCandidates.find(type => MediaRecorder.isTypeSupported(type)) || '';
+  chunks = [];
+  recordStream = canvas.captureStream(30);
+
+  try {
+    recorder = new MediaRecorder(recordStream, mimeType ? {mimeType, videoBitsPerSecond: 5000000} : {videoBitsPerSecond: 5000000});
+  } catch (e) {
+    recordStream.getTracks().forEach(track => track.stop());
+    isExporting = false;
+    resetButtons();
+    statusText.textContent = 'VIDEO EXPORT COULD NOT START — TRY CHROME OR EDGE';
+    return;
+  }
+
+  recorder.ondataavailable = event => {
+    if (event.data && event.data.size > 0) chunks.push(event.data);
+  };
+  recorder.onerror = () => {
+    statusText.textContent = 'RECORDING ERROR — PLEASE TRY AGAIN';
+  };
+  recorder.onstop = () => {
+    if (exportTimer) clearTimeout(exportTimer);
+    if (recordStream) recordStream.getTracks().forEach(track => track.stop());
+    const blob = new Blob(chunks, {type: recorder.mimeType || 'video/webm'});
+    if (blob.size > 1000) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'cyberpunk_identity_reconstruction_20s.webm';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      statusText.textContent = `VIDEO EXPORTED — ${(blob.size / 1048576).toFixed(1)} MB WEBM FILE`;
+    } else {
+      statusText.textContent = 'VIDEO FILE WAS EMPTY — PLEASE TRY AGAIN';
+    }
+    isExporting = false;
+    resetButtons();
+    saveBtn.disabled = !finalFrameReady;
+    replayBtn.disabled = false;
+  };
+
+  recorder.start(200);
+  // Record from the beginning for exactly 20 seconds; draw loop uses the same clock.
+  startTime = performance.now();
+  lastPaint = 0;
+  if (animationId) cancelAnimationFrame(animationId);
+  animationId = requestAnimationFrame(render);
+  exportTimer = setTimeout(() => {
+    if (recorder && recorder.state === 'recording') recorder.stop();
+  }, 20000);
+});
+
+saveBtn.addEventListener('click', () => {
+  if (!finalFrameReady) return;
+  canvas.toBlob(blob => {
+    if (!blob) {
+      statusText.textContent = 'PNG EXPORT FAILED — PLEASE TRY AGAIN';
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'cyberpunk_identity_reconstruction.png';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    statusText.textContent = 'FULL-COLOR PNG EXPORTED';
+  }, 'image/png');
+});
+
+window.addEventListener('beforeunload', () => {
+  if (photoURL) URL.revokeObjectURL(photoURL);
+  if (recordStream) recordStream.getTracks().forEach(track => track.stop());
+});
+</script>
+</body>
+</html>
