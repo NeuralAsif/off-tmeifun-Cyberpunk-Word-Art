@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080a12">
+  <meta name="description" content="Transform a photograph into a cinematic typographic portrait. Choose neon cyberpunk, true photo colour, or gallery editorial styling.">
+  <title>NEON//FORM — Typographic Portrait Studio</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <main class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="NEON FORM home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="brand-copy"><strong>NEON<span>//</span>FORM</strong><small>TYPOGRAPHIC PORTRAIT LAB</small></span>
+      </a>
+      <div class="topbar-meta">
+        <span class="live-dot"></span>
+        <span>LOCAL RENDER</span>
+        <span class="meta-divider"></span>
+        <span class="version-tag">STUDIO 01.4</span>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> DIGITAL ART EXPERIMENT / 001</p>
+        <h1>Your image.<br>Rewritten in <span class="gradient-type">type.</span></h1>
+        <p class="hero-description">A portrait built from language, light and colour. Shape the look, watch it assemble, then export your artwork.</p>
+        <div class="hero-tags">
+          <span><b>01</b> PHOTO INPUT</span>
+          <span><b>02</b> TYPE MATRIX</span>
+          <span><b>03</b> MOTION OUTPUT</span>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <div class="hero-art-core">
+          <span class="core-cross cross-one"></span>
+          <span class="core-cross cross-two"></span>
+          <span class="core-label label-top">FORM / 09</span>
+          <span class="core-label label-bottom">SIGNAL FOUND</span>
+          <div class="core-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="core-scan"></div>
+        </div>
+        <span class="art-index">NF—001</span>
+        <span class="art-coordinates">23° 48' N<br>90° 24' E</span>
+      </div>
+    </section>
+
+    <div class="section-rule"><span>THE WORKSPACE</span><span>01 — 03 / CREATE</span></div>
+
+    <section class="workspace" aria-label="Portrait creation workspace">
+      <aside class="control-panel panel">
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">INPUT / CONFIGURATION</p>
+            <h2>Build your portrait</h2>
+          </div>
+          <span class="panel-number">01</span>
+        </div>
+
+        <div class="control-section">
+          <div class="label-row">
+            <label for="photo">Source photograph</label>
+            <span class="micro-label">JPG · PNG · WEBP</span>
+          </div>
+          <input id="photo" class="visually-hidden" type="file" accept="image/*">
+          <label id="dropzone" class="dropzone" for="photo" tabindex="0">
+            <span class="upload-symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15.5v3A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="drop-copy">
+              <strong id="uploadTitle">Drop a portrait here</strong>
+              <small id="uploadSubtitle">or browse your files · up to 25 MB</small>
+            </span>
+            <span class="browse-chip">BROWSE <span>↗</span></span>
+          </label>
+          <div class="photo-file-row" id="photoFileRow" hidden>
+            <img id="preview" alt="Selected photo thumbnail">
+            <div class="photo-file-copy"><strong id="photoName">Photo selected</strong><small id="photoDimensions">Ready to process</small></div>
+            <button id="replacePhoto" class="icon-button" type="button" aria-label="Choose a different photo" title="Choose a different photo">↻</button>
+          </div>
+        </div>
+
+        <div class="control-section">
+          <div class="label-row">
+            <label for="word">Your words</label>
+            <span class="micro-label"><span id="wordCount">0</span> / 180</span>
+          </div>
+          <input id="word" class="text-input" type="text" placeholder="Name, phrase or short message…" autocomplete="off" maxlength="180">
+          <p class="field-note">Your text repeats across the portrait. Short phrases create a cleaner, more consistent typographic texture.</p>
+        </div>
+
+        <fieldset class="control-section style-fieldset">
+          <div class="label-row">
+            <legend>Art direction</legend>
+            <span class="micro-label">CHOOSE A LOOK</span>
+          </div>
+          <div class="style-options">
+            <label class="style-option style-cyber">
+              <input type="radio" name="artStyle" value="cyberpunk" checked>
+              <span class="style-swatch" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="style-text"><strong>Neon cyberpunk</strong><small>Electric · cinematic · bold</small></span>
+              <span class="radio-mark" aria-hidden="true"></span>
+            </label>
+            <label class="style-option style-photo">
+              <input type="radio" name="artStyle" value="photo">
+              <span class="style-swatch" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="style-text"><strong>True photo colour</strong><small>Natural tones from your image</small></span>
+              <span class="radio-mark" aria-hidden="true"></span>
+            </label>
+            <label class="style-option style-gallery">
+              <input type="radio" name="artStyle" value="gallery">
+              <span class="style-swatch" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="style-text"><strong>Gallery editorial</strong><small>Refined · muted · art print</small></span>
+              <span class="radio-mark" aria-hidden="true"></span>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="actions">
+          <button id="generate" class="primary-button" type="button">
+            <span>Create artwork</span><span class="button-arrow" aria-hidden="true">↗</span>
+          </button>
+          <div class="secondary-actions">
+            <button id="replay" class="secondary-button" type="button" disabled><span aria-hidden="true">↻</span> Replay</button>
+            <button id="save" class="secondary-button" type="button" disabled><span aria-hidden="true">↓</span> Save PNG</button>
+          </div>
+          <button id="export" class="export-button" type="button" disabled><span class="record-dot"></span> Export 20-second video <span class="export-format">WEBM</span></button>
+        </div>
+
+        <div class="privacy-note">
+          <span class="privacy-icon" aria-hidden="true">◇</span>
+          <p><strong>Private by design.</strong> Your photo is processed in this browser. It is not uploaded to a server by this page.</p>
+        </div>
+      </aside>
+
+      <section class="preview-panel panel" aria-labelledby="previewHeading">
+        <div class="preview-header">
+          <div>
+            <p class="panel-kicker">OUTPUT / LIVE MONITOR</p>
+            <h2 id="previewHeading">Portrait preview</h2>
+          </div>
+          <div class="output-badges"><span class="output-live"><i></i> <span id="outputState">STANDBY</span></span><span class="ratio-badge">9:16</span></div>
+        </div>
+
+        <div id="stage" class="stage is-idle">
+          <canvas id="canvas" width="900" height="1600" aria-label="Animated typographic portrait preview"></canvas>
+          <div id="stagePlaceholder" class="stage-placeholder">
+            <div class="placeholder-reticle"><span></span><i></i></div>
+            <p class="placeholder-overline">AWAITING SOURCE IMAGE</p>
+            <h3>Your portrait<br>will appear here.</h3>
+            <p class="placeholder-caption">Upload a photo, add your words<br>and choose an art direction.</p>
+            <div class="placeholder-corner corner-tl"></div><div class="placeholder-corner corner-tr"></div>
+            <div class="placeholder-corner corner-bl"></div><div class="placeholder-corner corner-br"></div>
+          </div>
+          <div class="stage-topline"><span>NF / IMAGE MATRIX</span><span id="stageStyle">NEON MODE</span></div>
+          <div class="stage-bottomline"><span>900 × 1600 PX</span><span>LOCAL PROCESSING</span></div>
+        </div>
+
+        <div class="progress-area">
+          <div class="progress-copy"><span id="status" role="status" aria-live="polite">Choose a photo to initialise the workspace.</span><span id="time">00:00 <i>/</i> 00:20</span></div>
+          <div class="timeline" aria-hidden="true"><div id="progress"></div></div>
+        </div>
+
+        <div class="preview-footer">
+          <div class="footer-stat"><span class="stat-label">RENDER ENGINE</span><strong>Canvas / 2D</strong></div>
+          <div class="footer-stat"><span class="stat-label">COLOUR SOURCE</span><strong id="colourSource">Neon spectrum</strong></div>
+          <div class="footer-stat"><span class="stat-label">EXPORT</span><strong>PNG + WEBM</strong></div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="site-footer">
+      <div class="footer-brand"><span class="mini-mark">N<span>/</span>F</span> NEON//FORM</div>
+      <p>AN EXPERIMENT IN IMAGE, LANGUAGE & LIGHT</p>
+      <span class="footer-build">BUILT FOR THE CURIOUS <b>✳</b></span>
+    </footer>
+  </main>
+</body>
+</html>
